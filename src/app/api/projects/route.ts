@@ -16,13 +16,11 @@ async function ensureDemoUser() {
 export async function GET() {
   try {
     const projects = await prisma.project.findMany({
-      include: {
-        _count: { select: { tasks: true } },
-      },
+      where: { owner: { email: "demo@local.app" }, isArchived: false },
+      include: { _count: { select: { tasks: true } } },
       orderBy: { updatedAt: "desc" },
     });
-
-    return NextResponse.json(projects);
+    return NextResponse.json(projects, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     console.error("Error fetching projects:", error);
     return NextResponse.json({ error: "Failed to fetch projects" }, { status: 500 });
@@ -32,30 +30,23 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const name = String(body.name || "").trim();
-
-    if (!name) {
-      return NextResponse.json({ error: "Project name is required" }, { status: 400 });
+    const name = typeof body.name === "string" ? body.name.trim() : "";
+    if (!name || name.length > 100) {
+      return NextResponse.json({ error: "Project name is required and must be under 100 characters" }, { status: 400 });
     }
-
     const user = await ensureDemoUser();
-
     const project = await prisma.project.create({
       data: {
         name,
-        description: body.description ? String(body.description) : null,
-        color: body.color ? String(body.color) : "#3B82F6",
-        icon: body.icon ? String(body.icon) : null,
+        description: typeof body.description === "string" ? body.description.slice(0, 2000) : null,
+        color: /^#[0-9a-fA-F]{6}$/.test(body.color) ? body.color : "#3B82F6",
         ownerId: user.id,
       },
-      include: {
-        _count: { select: { tasks: true } },
-      },
+      include: { _count: { select: { tasks: true } } },
     });
-
-    return NextResponse.json(project, { status: 201 });
+    return NextResponse.json(project, { status: 201, headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     console.error("Error creating project:", error);
-    return NextResponse.json({ error: "Failed to create project" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to create project" }, { status: 400 });
   }
 }

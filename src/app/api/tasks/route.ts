@@ -1,31 +1,37 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-const allowedStatuses = ["TODO", "IN_PROGRESS", "IN_REVIEW", "DONE", "ARCHIVED"] as const;
-const allowedPriority = ["LOW", "MEDIUM", "HIGH", "URGENT"] as const;
+const statuses = ["TODO", "IN_PROGRESS", "IN_REVIEW", "DONE", "ARCHIVED"] as const;
+const priorities = ["LOW", "MEDIUM", "HIGH", "URGENT"] as const;
 
 async function ensureDemoUser() {
   return prisma.user.upsert({
     where: { email: "demo@local.app" },
     update: { name: "Demo User" },
-    create: {
-      email: "demo@local.app",
-      name: "Demo User",
-      passwordHash: "demo-user",
-    },
+    create: { email: "demo@local.app", name: "Demo User", passwordHash: "demo-user" },
   });
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const tasks = await prisma.task.findMany({
-      include: {
-        project: true,
-      },
-      orderBy: { updatedAt: "desc" },
-    });
+    const { searchParams } = new URL(request.url);
+    const projectId = searchParams.get("projectId");
+    const status = searchParams.get("status");
+    if (status && !statuses.includes(status as (typeof statuses)[number])) {
+      return NextResponse.json({ error: "Invalid task status" }, { status: 400 });
+    }
 
-    return NextResponse.json(tasks);
+    const tasks = await prisma.task.findMany({
+      where: {
+        ...(projectId ? { projectId } : {}),
+        ...(status ? { status } : {}),
+        project: { owner: { email: "demo@local.app" } },
+      },
+      include: { project: true, tags: { include: { tag: true } }, aiInsights: true },
+      orderBy: [{ order: "asc" }, { updatedAt: "desc" }],
+      take: 200,
+    });
+    return NextResponse.json(tasks, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     console.error("Error fetching tasks:", error);
     return NextResponse.json({ error: "Failed to fetch tasks" }, { status: 500 });
@@ -35,44 +41,46 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const title = String(body.title || "").trim();
-
-    if (!title) {
-      return NextResponse.json({ error: "Title is required" }, { status: 400 });
+    const title = typeof body.title === "string" ? body.title.trim() : "";
+    if (!title || title.length > 200) {
+      return NextResponse.json({ error: "Task title is required and must be under 200 characters" }, { status: 400 });
     }
 
-    const status = allowedStatuses.includes(String(body.status || "TODO") as (typeof allowedStatuses)[number])
-      ? (String(body.status || "TODO") as (typeof allowedStatuses)[number])
-      : "TODO";
+    const status = statuses.includes(body.status) ? body.status : "TODO";
+    const priority = priorities.includes(body.priority) ? body.priority : "MEDIUM";
+    const dueDate = body.dueDate ? new Date(body.dueDate) : null;
+    const startDate = body.startDate ? new Date(body.startDate) : null;
+    const estimatedHours = body.estimatedHours == null ? null : Number(body.estimatedHours);
+    if ((dueDate && Number.isNaN(dueDate.getTime())) || (startDate && Number.isNaN(startDate.getTime()))) {
+      return NextResponse.json({ error: "Invalid task date" }, { status: 400 });
+    }
+    if (estimatedHours !== null && (!Number.isFinite(estimatedHours) || estimatedHours <= 0)) {
+      return NextResponse.json({ error: "Estimated hours must be a positive number" }, { status: 400 });
+    }
 
-    const priority = allowedPriority.includes(String(body.priority || "MEDIUM") as (typeof allowedPriority)[number])
-      ? (String(body.priority || "MEDIUM") as (typeof allowedPriority)[number])
-      : "MEDIUM";
-
+    const user = await ensureDemoUser();
     const projectId = typeof body.projectId === "string" && body.projectId.trim() ? body.projectId : null;
-    const description = typeof body.description === "string" ? body.description : null;
-
-    await ensureDemoUser();
+    if (projectId) {
+      const project = await prisma.project.findFirst({ where: { id: projectId, ownerId: user.id } });
+      if (!project) return NextResponse.json({ error: "Project not found" }, { status: 404 });
+    }
 
     const task = await prisma.task.create({
       data: {
         title,
-        description,
+        description: typeof body.description === "string" ? body.description.slice(0, 5000) : null,
         status,
         priority,
         projectId,
-        dueDate: body.dueDate ? new Date(body.dueDate) : null,
-        startDate: body.startDate ? new Date(body.startDate) : null,
-        estimatedHours: body.estimatedHours !== undefined && body.estimatedHours !== null ? Number(body.estimatedHours) : null,
+        dueDate,
+        startDate,
+        estimatedHours,
       },
-      include: {
-        project: true,
-      },
+      include: { project: true },
     });
-
-    return NextResponse.json(task, { status: 201 });
+    return NextResponse.json(task, { status: 201, headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     console.error("Error creating task:", error);
-    return NextResponse.json({ error: "Failed to create task" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to create task" }, { status: 400 });
   }
 }

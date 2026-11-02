@@ -1,49 +1,55 @@
 # AI Task Manager
 
-A small Next.js and Prisma MVP for creating projects and tasks, with optional OpenAI configuration. The dashboard currently supports listing tasks and creating projects/tasks. It is a single shared workspace, not a multi-user SaaS application.
+Next.js + Prisma task and project manager. This repository provides a single shared workspace protected by an HTTP Basic Auth gate. It is an MVP deployment, not a multi-user SaaS: users sharing the configured credentials share the same data. Do not store sensitive or regulated data without adding individual accounts and per-user authorization.
 
-## Run locally
+## Local development
 
-Requires Node.js 22+ and npm.
+Requires Node.js 22+ and Docker (for the included PostgreSQL service).
 
 ```bash
-npm ci
 cp .env.example .env.local
+# For local Docker Postgres, set POSTGRES_PASSWORD in .env (Compose reads .env).
+docker compose up -d db
+npm ci
 npm run db:generate
 npm run db:push
 npm run dev
 ```
 
-Open <http://localhost:3000>. In development, the access gate is disabled if both `APP_ACCESS_USERNAME` and `APP_ACCESS_PASSWORD` are unset. For `npm run start` in production, set both variables. AI is optional; the dashboard works without an API key.
+Open <http://localhost:3000>. In development the access gate is disabled when both `APP_ACCESS_USERNAME` and `APP_ACCESS_PASSWORD` are unset. For production, both are required. The AI integration is optional.
 
-## Deploy a private single-instance MVP with Docker
+## Deploy on Vercel with managed PostgreSQL
 
-The included Docker setup is intended for a single persistent container using SQLite. It is suitable for a private pilot on a Docker-capable host with a persistent volume; it is **not** a multi-region or multi-instance SaaS database setup. The container applies the Prisma schema on startup and stores the SQLite file in the named volume.
-
-1. Copy `.env.example` to `.env`.
-2. Set `APP_ACCESS_USERNAME` and a long unique `APP_ACCESS_PASSWORD` in `.env`.
-3. Run:
-
+1. Create a managed PostgreSQL database (for example, Neon, Supabase, or another provider) and obtain its connection string. Use the provider's pooled URL for runtime if recommended, plus a direct URL for schema changes if the provider requires it.
+2. Import this repository into Vercel and select `deploy/mvp-hardening` for the deployment branch.
+3. Set these Vercel environment variables for Preview and Production:
+   - `DATABASE_URL`: PostgreSQL connection string with `?schema=public` (URL-encode special characters in credentials).
+   - `APP_ACCESS_USERNAME`: a unique deployment username.
+   - `APP_ACCESS_PASSWORD`: a long, unique random password.
+   - `OPENAI_API_KEY`: optional; only when enabling AI features.
+   - `OPENAI_BASE_URL` and `AI_MODEL`: optional provider/model settings.
+   - `NEXT_PUBLIC_APP_URL`: the canonical HTTPS deployment URL.
+4. Before initial launch, create the database schema from the repository root using the production connection string in a secure environment:
    ```bash
-   docker compose up --build -d
+   npm ci
+   npx prisma generate
+   npx prisma db push
    ```
+   Never commit the connection string or put it in a public CI log. For subsequent schema changes, adopt reviewed Prisma migrations (`prisma migrate dev` in development and `prisma migrate deploy` in production) rather than relying on `db push`.
+5. Deploy and verify `https://YOUR-DOMAIN/api/health` returns 200. This endpoint checks database connectivity and is intentionally unauthenticated for hosting health probes. All other app/API paths require the configured Basic Auth credentials.
+6. Configure a custom domain and confirm HTTPS is active before sharing credentials.
 
-4. Open <http://localhost:3000>. Your browser will request the Basic Auth credentials. For an internet-facing deployment, terminate HTTPS at the hosting provider or reverse proxy; do not expose Basic Auth over plain HTTP.
-5. Check health at <http://localhost:3000/api/health>. This endpoint checks database connectivity and is intentionally unauthenticated for platform health probes.
+The Basic Auth gate is suitable only for a private pilot/internal MVP. It is not individual identity, account recovery, roles, or per-user data isolation. Add a real identity provider and ownership checks before making this a public multi-user product. For global traffic, use the provider's managed Postgres region near the app or supported connection pooling; this application is not multi-region write replicated.
 
-Back up the `task_manager_data` Docker volume regularly. Do not run multiple app replicas against this SQLite deployment. For scale-out, migrate to PostgreSQL, create and review Prisma migrations, and implement user accounts plus per-user authorization before opening it to the public.
+## Self-host with Docker Compose
 
-## Environment variables
+Copy `.env.example` to `.env`, set a strong `POSTGRES_PASSWORD`, `APP_ACCESS_USERNAME`, and `APP_ACCESS_PASSWORD`, then run:
 
-| Variable | Required | Purpose |
-| --- | --- | --- |
-| `DATABASE_URL` | Yes | Prisma URL; local/Docker default is `file:./dev.db`. |
-| `APP_ACCESS_USERNAME` | Production | HTTP Basic Auth username for the private pilot. |
-| `APP_ACCESS_PASSWORD` | Production | HTTP Basic Auth password; use a long random secret. |
-| `OPENAI_API_KEY` | No | Optional key for AI features. |
-| `OPENAI_BASE_URL` | No | Optional OpenAI-compatible API URL. |
-| `AI_MODEL` | No | Model name, defaults to `gpt-4o-mini`. |
-| `NEXT_PUBLIC_APP_URL` | No | Public site URL for integrations. |
+```bash
+docker compose up --build -d
+```
+
+Compose starts PostgreSQL with a persistent Docker volume and the app applies the Prisma schema on startup. Put it behind HTTPS using your hosting platform or reverse proxy. Back up PostgreSQL regularly.
 
 ## Checks
 
@@ -53,4 +59,4 @@ npm run typecheck
 npm run build
 ```
 
-The repository changes should be treated as unverified until these commands and the Docker startup flow have been run in the target environment. `npm run db:push` is convenient for this MVP; for a production database and team workflow, generate and review Prisma migrations and use a managed PostgreSQL service.
+These checks must be run in your CI or local environment before production; a GitHub file update alone does not prove a successful build or deployment.

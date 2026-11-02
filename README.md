@@ -1,175 +1,56 @@
 # AI Task Manager
 
-AI-powered task and project management application built with Next.js, Prisma, and OpenAI. The app is designed to help users organize projects, track tasks, and receive AI-generated productivity insights such as prioritization, effort estimation, task breakdowns, and smart scheduling suggestions.
+A small Next.js and Prisma MVP for creating projects and tasks, with optional OpenAI configuration. The dashboard currently supports listing tasks and creating projects/tasks. It is a single shared workspace, not a multi-user SaaS application.
 
-## Overview
+## Run locally
 
-This project combines a modern full-stack web app with a task management workflow and intelligent automation. It is structured as a Next.js application using the App Router, with Prisma as the ORM and SQLite as the local development database.
-
-The repository already includes the core building blocks for a real product:
-- Task creation and management
-- Project organization
-- Priority and status tracking
-- AI-driven task analysis
-- Smart scheduling recommendations
-- Task dependencies and subtasks
-- Tags, comments, and time tracking
-- Notifications and user preferences
-
-## Tech Stack
-
-- Next.js 16
-- React 19
-- TypeScript
-- Prisma ORM
-- SQLite (development database)
-- OpenAI API
-- Tailwind CSS
-
-## Key Features
-
-### Project Management
-- Create and manage projects
-- Assign tasks to projects
-- Organize work by owner and updated status
-
-### Task Workflow
-- Create tasks with title, description, priority, status, due dates, and estimates
-- Support subtasks and task dependencies
-- Use tags, comments, and time tracking
-
-### AI Insights
-- Analyze task complexity and generate suggested priorities
-- Estimate effort in hours
-- Suggest breakdowns and tags
-- Identify deadline risks
-- Recommend scheduling windows based on work hours and task urgency
-
-### Data Layer
-- Prisma schema defines users, projects, tasks, AI insights, notifications, preferences, tags, and time entries
-- SQLite database is used for local development setup
-
-## Repository Structure
+Requires Node.js 22+ and npm.
 
 ```bash
-.
-├── prisma/
-│   ├── schema.prisma
-│   └── dev.db
-├── public/
-├── src/
-│   ├── app/
-│   │   ├── api/
-│   │   ├── favicon.ico
-│   │   ├── globals.css
-│   │   ├── layout.tsx
-│   │   └── page.tsx
-│   ├── components/
-│   ├── lib/
-│   │   ├── ai-service.ts
-│   │   ├── prisma.ts
-│   │   ├── utils.ts
-│   │   └── validations.ts
-│   └── types/
-│       └── index.ts
-├── .gitignore
-├── AGENTS.md
-├── README.md
-├── eslint.config.mjs
-├── next.config.ts
-├── package.json
-├── prisma.config.ts
-├── tsconfig.json
-└── package-lock.json
-```
-
-## Getting Started
-
-### 1. Install dependencies
-
-```bash
-npm install
-```
-
-### 2. Configure environment variables
-
-Create a `.env.local` file by copying the example:
-
-```bash
+npm ci
 cp .env.example .env.local
-```
-
-Then update the values:
-
-```env
-DATABASE_URL="file:./prisma/dev.db"
-OPENAI_API_KEY="your_openai_api_key"
-AI_MODEL="gpt-4o-mini"
-```
-
-### 3. Generate Prisma client
-
-```bash
-npx prisma generate
-```
-
-### 4. Push the Prisma schema to SQLite
-
-```bash
-npx prisma db push
-```
-
-### 5. Run the app locally
-
-```bash
+npm run db:generate
+npm run db:push
 npm run dev
 ```
 
-Then open:
+Open <http://localhost:3000>. In development, the access gate is disabled if both `APP_ACCESS_USERNAME` and `APP_ACCESS_PASSWORD` are unset. For `npm run start` in production, set both variables. AI is optional; the dashboard works without an API key.
 
-```text
-http://localhost:3000
+## Deploy a private single-instance MVP with Docker
+
+The included Docker setup is intended for a single persistent container using SQLite. It is suitable for a private pilot on a Docker-capable host with a persistent volume; it is **not** a multi-region or multi-instance SaaS database setup. The container applies the Prisma schema on startup and stores the SQLite file in the named volume.
+
+1. Copy `.env.example` to `.env`.
+2. Set `APP_ACCESS_USERNAME` and a long unique `APP_ACCESS_PASSWORD` in `.env`.
+3. Run:
+
+   ```bash
+   docker compose up --build -d
+   ```
+
+4. Open <http://localhost:3000>. Your browser will request the Basic Auth credentials. For an internet-facing deployment, terminate HTTPS at the hosting provider or reverse proxy; do not expose Basic Auth over plain HTTP.
+5. Check health at <http://localhost:3000/api/health>. This endpoint checks database connectivity and is intentionally unauthenticated for platform health probes.
+
+Back up the `task_manager_data` Docker volume regularly. Do not run multiple app replicas against this SQLite deployment. For scale-out, migrate to PostgreSQL, create and review Prisma migrations, and implement user accounts plus per-user authorization before opening it to the public.
+
+## Environment variables
+
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `DATABASE_URL` | Yes | Prisma URL; local/Docker default is `file:./dev.db`. |
+| `APP_ACCESS_USERNAME` | Production | HTTP Basic Auth username for the private pilot. |
+| `APP_ACCESS_PASSWORD` | Production | HTTP Basic Auth password; use a long random secret. |
+| `OPENAI_API_KEY` | No | Optional key for AI features. |
+| `OPENAI_BASE_URL` | No | Optional OpenAI-compatible API URL. |
+| `AI_MODEL` | No | Model name, defaults to `gpt-4o-mini`. |
+| `NEXT_PUBLIC_APP_URL` | No | Public site URL for integrations. |
+
+## Checks
+
+```bash
+npm run lint
+npm run typecheck
+npm run build
 ```
 
-## Environment Variables
-
-| Variable | Purpose |
-| --- | --- |
-| `DATABASE_URL` | SQLite database connection string |
-| `OPENAI_API_KEY` | API key used for AI-based task analysis |
-| `AI_MODEL` | OpenAI model name, defaults to `gpt-4o-mini` |
-
-## Scripts
-
-```json
-{
-  "dev": "next dev",
-  "build": "next build",
-  "start": "next start",
-  "lint": "eslint"
-}
-```
-
-## AI Functionality
-
-The app includes an AI service layer in `src/lib/ai-service.ts`. It generates insights such as:
-- priority suggestions
-- time estimates
-- task breakdowns
-- smart tagging
-- deadline risk warnings
-- schedule recommendations
-
-This logic uses the OpenAI API and falls back to safe default values if the AI request fails.
-
-## Notes
-
-- The project is currently configured for SQLite for local development.
-- Database models are defined in `prisma/schema.prisma` and represent a fairly complete task management domain.
-- The frontend is still in an early scaffolded state, but the backend and Prisma models already show the intended product architecture.
-
-## Why this project matters
-
-This repository is not just a basic starter app—it is structured like a real productivity SaaS product. It includes the domain model, backend APIs, AI integration, and task workflow needed for a task manager with intelligent planning features.
-
-In short, the app is meant to help users manage tasks smarter, not just store them. The AI layer adds a practical business value beyond ordinary task tracking by helping with prioritization, planning, and workload management.
+The repository changes should be treated as unverified until these commands and the Docker startup flow have been run in the target environment. `npm run db:push` is convenient for this MVP; for a production database and team workflow, generate and review Prisma migrations and use a managed PostgreSQL service.

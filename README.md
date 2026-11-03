@@ -1,10 +1,21 @@
 # AI Task Manager
 
-AI-powered task and project management application built with Next.js, Prisma, and OpenAI. The app is designed to help users organize projects, track tasks, and receive AI-generated productivity insights such as prioritization, effort estimation, task breakdowns, and smart scheduling suggestions.
+AI-powered task and project management application built with Next.js, Prisma, and OpenAI. The app is designed to help users organize projects, track tasks, and receive AI-generated productivity insights.
+
+## Live Demo
+
+[Open TaskFlow Manager](https://taskflow-manager-u3q2.onrender.com/login/?next=/)
+
+## Screenshots
+
+![Login page](./public/screenshots/1-login.png)
+![Tasks page](./public/screenshots/2-tasks.png)
+![Kanban board](./public/screenshots/3-kanban.png)
+![Dashboard](./public/screenshots/4-dashboard.png)
 
 ## Overview
 
-This project combines a modern full-stack web app with a task management workflow and intelligent automation. It is structured as a Next.js application using the App Router, with Prisma as the ORM and SQLite as the local development database.
+This project combines a modern full-stack web app with a task management workflow and intelligent automation. It is structured as a Next.js application using the App Router, with Prisma as the ORM and OpenAI powering the AI task insights.
 
 The repository already includes the core building blocks for a real product:
 - Task creation and management
@@ -170,6 +181,6 @@ This logic uses the OpenAI API and falls back to safe default values if the AI r
 
 ## Why this project matters
 
-This repository is not just a basic starter app—it is structured like a real productivity SaaS product. It includes the domain model, backend APIs, AI integration, and task workflow needed for a task manager with intelligent planning features.
+This repository is not just a basic starter app—it is structured like a real productivity SaaS product. It includes the domain model, backend APIs, AI integration, and task workflow needed for a complete productivity application.
 
-In short, the app is meant to help users manage tasks smarter, not just store them. The AI layer adds a practical business value beyond ordinary task tracking by helping with prioritization, planning, and workload management.
+In short, the app is meant to help users manage tasks smarter, not just store them. The AI layer adds practical business value beyond ordinary task tracking by helping with prioritization, planning, and decision-making.

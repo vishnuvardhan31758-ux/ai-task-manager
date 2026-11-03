@@ -6,8 +6,23 @@ The deployed TaskFlow Manager app is available here:
 
 ## Screenshots
 
-Screenshots have not been added yet. Once captured, save them in `public/screenshots/` and embed them here, for example:
+Save the screenshot files under `public/screenshots/` with these names, then they will display below:
+
+- `1-login.png`
+- `2-tasks.png`
+- `3-kanban.png`
+- `4-dashboard.png`
 
 ```markdown
-![Login page](./public/screenshots/login.png)
+![Login page](./public/screenshots/1-login.png)
+![Tasks page](./public/screenshots/2-tasks.png)
+![Kanban board](./public/screenshots/3-kanban.png)
+![Dashboard](./public/screenshots/4-dashboard.png)
 ```
+
+## Example render
+
+![Login page](./public/screenshots/1-login.png)
+![Tasks page](./public/screenshots/2-tasks.png)
+![Kanban board](./public/screenshots/3-kanban.png)
+![Dashboard](./public/screenshots/4-dashboard.png)

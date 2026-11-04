@@ -6,13 +6,6 @@ AI-powered task and project management application built with Next.js, Prisma, a
 
 [Open TaskFlow Manager](https://taskflow-manager-u3q2.onrender.com/login/?next=/)
 
-## Screenshots
-
-![Login page](./public/screenshots/1-login.png)
-![Tasks page](./public/screenshots/2-tasks.png)
-![Kanban board](./public/screenshots/3-kanban.png)
-![Dashboard](./public/screenshots/4-dashboard.png)
-
 ## Overview
 
 This project combines a modern full-stack web app with a task management workflow and intelligent automation. It is structured as a Next.js application using the App Router, with Prisma as the ORM and OpenAI powering the AI task insights.
